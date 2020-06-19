@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+import requests
+import vk_api
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+from vk_api.utils import get_random_id
+
+# token - ��� ����; access - ��� �������?
+token = "191e3dc35095061f02e911e3a58c36f6201bebd64d0c55ef483e188676f9d985d5520cb20051913367737"
+access_token = "fc0094f6fc0094f6fc0094f62ffc723bb0ffc00fc0094f6a2ec36ebf4e8f3016a58d7d9"
+
+vk = vk_api.VkApi(token=token)
+
+vk._auth_token()
+
+api = vk.get_api()
+
+longpoll = VkBotLongPoll(vk, 196442458)
+domain = 'foodsharingbot'
+group_id = '-196442458'
+
+
+r = requests.get('https://api.vk.com/method/wall.get',
+                  params={
+                      'access_token': access_token,
+                      'owner_id': group_id,
+                      'v': '5.110',
+                      'count': 2,
+                      'offset': 0
+                  })
+
+data = r.json()['response']['items']
+print(data)
+for post in data:
+    print(post['text'])
+
+for event in longpoll.listen():
+    if event.type == VkBotEventType.MESSAGE_NEW:
+        message = event.obj['message']
+
+        peer_id = message['peer_id']
+        text = message['text']
+
+        if text.lower() == "��� ���":
+            api.messages.send(peer_id=peer_id, message="���� ���", random_id=get_random_id())
+
+
+
+
+
+
+
+
+
