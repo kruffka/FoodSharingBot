@@ -40,8 +40,8 @@ for event in longpoll.listen():
         peer_id = message['peer_id']
         text = message['text']
 
-        if text.lower() == "��� ���":
-            api.messages.send(peer_id=peer_id, message="���� ���", random_id=get_random_id())
+        if text.lower() == "Дай еду":
+            api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
 
 
 
