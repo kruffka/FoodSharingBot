@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import requests
-import time
+import json
 import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
-from collections import defaultdict
+
 
 
 # token - для бота; access - для методов?
@@ -23,8 +23,8 @@ group_id = '-196442458'
 
 
 # Пользователи
-# нужно будет их записывать в файл и считывать в дальнейшем
-users = defaultdict(list)
+# нужно будет их записывать в файл и считывать в дальнейшем; json сейчас и потом
+users = []
 
 # Пока что только свой айди добавлю
 # users["peer_id"].append(103961888)
@@ -33,6 +33,15 @@ users = defaultdict(list)
 # users["street"].append("Улица")
 # users["fav_food"].append("Шоколад")
 # users["all_check"].append(0)
+
+# # Юзер
+# class user(object):
+#     def __init__(self, peer_id: str, links: str, street: str, fav_food: str, all_check: int):
+#         self.peer_id = peer_id
+#         self.links = links
+#         self.street = street
+#         self.fav_food = fav_food
+#         self.all_check = all_check
 
 
 
@@ -47,24 +56,27 @@ def user_check(peer_id):
     check_favfood = 0
 
     # если юзер существует, смотрим есть ли у него ссылки, улицы и любимая еда для дальнейшей работы
-    for user in users["peer_id"]:
-        if user == peer_id:
+    for tmp in users:
+        if tmp["peer_id"] == peer_id:
             check = 1
-            if users["links_count"] != 0:
+            if len(tmp["links"]) != 0:
                 check_links = 1
-            if users["street"] != 0:
+            if len(tmp["street"]) != 0:
                 check_street = 1
-            if users["fav_food"] != 0:
+            if len(tmp["fav_food"]) != 0:
                 check_favfood = 1
-    # Если нету - добавляем
 
+    # Если нету - добавляем
     if check == 0:
-        users["peer_id"].append(peer_id)
-        users["links"].append(0)
-        users["links_count"].append(0)
-        users["street"].append(0)
-        users["fav_food"].append(0)
-        users["all_check"].append(0)
+        jsonData = """ {
+            "peer_id"    : """ + str(peer_id) + """,
+            "links"      : [],
+            "street"     : [],
+            "fav_food"   : [],
+            "all_checks" : 0
+        } """
+        data = json.loads(jsonData)
+        users.append(data)
     return [check_links, check_street, check_favfood]
 
 
@@ -103,9 +115,8 @@ for event in longpoll.listen():
 
         # Добавляем ссылочки, удаление потом добавить над или изменение
         if text.lower()[:4] == "http":
-            if(users["links_count"][0] <= 5):
-                users["links"].append(text.lower())
-                users["links_count"] = len(users["links_count"])
+            if(len(users[0]["links"]) <= 5):
+                users[0]["links"].append(text.lower())
                 api.messages.send(peer_id=peer_id, message="Ваша ссылка успешно добавлена!", random_id=get_random_id())
             else:
                 api.messages.send(peer_id=peer_id, message="Ссылочки кончились", random_id=get_random_id())
@@ -117,12 +128,13 @@ for event in longpoll.listen():
             api.messages.send(peer_id=peer_id, message="Место проживания? (район или улица). Пример: 'ул. Уличная' или 'р-н Районский'", random_id=get_random_id())
 
             if text.lower()[:3] == "ул." or text.lower()[:3] == "р-н":
-                users["street"].append(text.lower()[3:])
+                users[0]["street"].append(text.lower()[4:])
 
         # Улицы введены, ожидаем интересные продукты
         # Нужно добавить опцию без разницы, какоет ограничение по еде мб
         if user_checks[1] == 1:
             api.messages.send(peer_id=peer_id, message="Осталось ввести интересную для вас еду и мы готовы в работе!", random_id=get_random_id())
+            
 
         if user_checks[2] == 1:
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
