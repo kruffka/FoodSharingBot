@@ -27,19 +27,29 @@ users = defaultdict(list)
 # Пока что только свой айди добавлю
 users["peer_id"].append(103961888)
 users["links"].append("https://vk.com/sharingfood")
+users["links_count"].append(0)
+
+
+# Вайтлист фудшерингов для вк бы, но там чет очень много пабликов, мб потом; пока юзеры свои любые паблики могут кидать, не больше 5
+# fs_white_list = []
 
 # Функция проверки пользователей (были такие уже или нет)
 def user_check(peer_id):
     check = 0
+    check_links = 0
+
+    # если юзер существует, смотрим есть ли у него ссылки для дальнейшей работы
     for user in users["peer_id"]:
         if user == peer_id:
             check = 1
+            if users["links_count"][0] != 0:
+                check_links = 1
 
     # Если нету - добавляем
 
     if check == 0:
         users["peer_id"].append(peer_id)
-    return check
+    return check_links
 
 
 
@@ -69,11 +79,25 @@ for event in longpoll.listen():
 
 
         # Смотрим есть ли айди чата с юзером в нашей коллекции; мб каждый раз при новом сообщение такое делать нехорошо..
-        # 1 - Существует; 0 - не очень
+        # 1 - Существует и у него есть ссылочки на группы; 0 - не очень
         user_links = user_check(peer_id)
 
-        # Работаем дальше
+        # Работаем дальше, вводить ссылочки пока по одной можно за сообщение
+        if user_links == 0:
+            api.messages.send(peer_id=peer_id, message="Здравствуйте, пожалуйста, поделителитесь ссылками на ваши любимые фудшеринг группы, чтобы я мог работать. Максимум групп - 5. Пример: https://vk.com/sharingfood", random_id=get_random_id())
 
+
+        # Добавляем ссылочки, удаление потом добавить над
+        if text.lower()[:4] == "http":
+            if(users["links_count"][0] <= 5):
+                users["links"].append(text.lower())
+                users["links_count"][0] = users["links_count"][0] + 1
+                api.messages.send(peer_id=peer_id, message="Ваша ссылка успешно добавлена!", random_id=get_random_id())
+            else:
+                api.messages.send(peer_id=peer_id, message="Ссылочки кончились", random_id=get_random_id())
+
+        if user_links == 1:
+            api.messages.send(peer_id=peer_id, message="аыф", random_id=get_random_id())
 
 
         if text.lower() == "дай еду":
