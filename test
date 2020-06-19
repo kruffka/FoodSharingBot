@@ -3,8 +3,9 @@ import requests
 import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
+from collections import defaultdict
 
-# token - ��� ����; access - ��� �������?
+# token - для бота; access - для методов?
 token = "191e3dc35095061f02e911e3a58c36f6201bebd64d0c55ef483e188676f9d985d5520cb20051913367737"
 access_token = "fc0094f6fc0094f6fc0094f62ffc723bb0ffc00fc0094f6a2ec36ebf4e8f3016a58d7d9"
 
@@ -19,19 +20,45 @@ domain = 'foodsharingbot'
 group_id = '-196442458'
 
 
-r = requests.get('https://api.vk.com/method/wall.get',
-                  params={
-                      'access_token': access_token,
-                      'owner_id': group_id,
-                      'v': '5.110',
-                      'count': 2,
-                      'offset': 0
-                  })
+# Пользователи
+# нужно будет их записывать в файл и считывать в дальнейшем
+users = defaultdict(list)
 
-data = r.json()['response']['items']
-print(data)
-for post in data:
-    print(post['text'])
+# Пока что только свой айди добавлю
+users["peer_id"].append(103961888)
+users["links"].append("https://vk.com/sharingfood")
+
+# Функция проверки пользователей (были такие уже или нет)
+def user_check(peer_id):
+    check = 0
+    for user in users["peer_id"]:
+        if user == peer_id:
+            check = 1
+
+    # Если нету - добавляем
+
+    if check == 0:
+        users["peer_id"].append(peer_id)
+    return check
+
+
+
+# r = requests.get('https://api.vk.com/method/wall.get',
+#                   params={
+#                       'access_token': access_token,
+#                       'owner_id': group_id,
+#                       'v': '5.110',
+#                       'count': 2,
+#                       'offset': 0
+#                   })
+#
+# data = r.json()['response']['items']
+# print(data)
+# for post in data:
+#     print(post['text'])
+
+
+
 
 for event in longpoll.listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
@@ -40,8 +67,18 @@ for event in longpoll.listen():
         peer_id = message['peer_id']
         text = message['text']
 
-        if text.lower() == "Дай еду":
+
+        # Смотрим есть ли айди чата с юзером в нашей коллекции; мб каждый раз при новом сообщение такое делать нехорошо..
+        # 1 - Существует; 0 - не очень
+        user_links = user_check(peer_id)
+
+        # Работаем дальше
+
+
+
+        if text.lower() == "дай еду":
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
+
 
 
 
