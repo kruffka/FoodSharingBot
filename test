@@ -44,7 +44,6 @@ for event in longpoll.listen():
             api.messages.send(peer_id=peer_id, message="���� ���", random_id=get_random_id())
 
 
-test
 
 
 
