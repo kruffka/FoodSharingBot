@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import requests
+import time
 import vk_api
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
 from collections import defaultdict
+
 
 # token - для бота; access - для методов?
 token = "191e3dc35095061f02e911e3a58c36f6201bebd64d0c55ef483e188676f9d985d5520cb20051913367737"
@@ -25,9 +27,13 @@ group_id = '-196442458'
 users = defaultdict(list)
 
 # Пока что только свой айди добавлю
-users["peer_id"].append(103961888)
-users["links"].append("https://vk.com/sharingfood")
-users["links_count"].append(0)
+# users["peer_id"].append(103961888)
+# users["links"].append("https://vk.com/sharingfood")
+# users["links_count"].append(1)
+# users["street"].append("Улица")
+# users["fav_food"].append("Шоколад")
+# users["all_check"].append(0)
+
 
 
 # Вайтлист фудшерингов для вк бы, но там чет очень много пабликов, мб потом; пока юзеры свои любые паблики могут кидать, не больше 5
@@ -37,19 +43,29 @@ users["links_count"].append(0)
 def user_check(peer_id):
     check = 0
     check_links = 0
+    check_street = 0
+    check_favfood = 0
 
-    # если юзер существует, смотрим есть ли у него ссылки для дальнейшей работы
+    # если юзер существует, смотрим есть ли у него ссылки, улицы и любимая еда для дальнейшей работы
     for user in users["peer_id"]:
         if user == peer_id:
             check = 1
-            if users["links_count"][0] != 0:
+            if users["links_count"] != 0:
                 check_links = 1
-
+            if users["street"] != 0:
+                check_street = 1
+            if users["fav_food"] != 0:
+                check_favfood = 1
     # Если нету - добавляем
 
     if check == 0:
         users["peer_id"].append(peer_id)
-    return check_links
+        users["links"].append(0)
+        users["links_count"].append(0)
+        users["street"].append(0)
+        users["fav_food"].append(0)
+        users["all_check"].append(0)
+    return [check_links, check_street, check_favfood]
 
 
 
@@ -69,7 +85,6 @@ def user_check(peer_id):
 
 
 
-
 for event in longpoll.listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
         message = event.obj['message']
@@ -79,26 +94,41 @@ for event in longpoll.listen():
 
 
         # Смотрим есть ли айди чата с юзером в нашей коллекции; мб каждый раз при новом сообщение такое делать нехорошо..
-        # 1 - Существует и у него есть ссылочки на группы; 0 - не очень
-        user_links = user_check(peer_id)
-
+        # 1 - Существует и у него есть ссылочки на группы; 0 - не очень аыфыаф тут еще наделал
+        user_checks = user_check(peer_id)
+        print(users, user_checks)
         # Работаем дальше, вводить ссылочки пока по одной можно за сообщение
-        if user_links == 0:
-            api.messages.send(peer_id=peer_id, message="Здравствуйте, пожалуйста, поделителитесь ссылками на ваши любимые фудшеринг группы, чтобы я мог работать. Максимум групп - 5. Пример: https://vk.com/sharingfood", random_id=get_random_id())
+        if user_checks[0] == 0:
+            api.messages.send(peer_id=peer_id, message="Здравствуйте, пожалуйста, поделителитесь ссылками на ваши любимые фудшеринг группы, чтобы я мог работать. Максимум групп - 5. Пример: 'https://vk.com/sharingfood'", random_id=get_random_id())
 
-
-        # Добавляем ссылочки, удаление потом добавить над
+        # Добавляем ссылочки, удаление потом добавить над или изменение
         if text.lower()[:4] == "http":
             if(users["links_count"][0] <= 5):
                 users["links"].append(text.lower())
-                users["links_count"][0] = users["links_count"][0] + 1
+                users["links_count"] = len(users["links_count"])
                 api.messages.send(peer_id=peer_id, message="Ваша ссылка успешно добавлена!", random_id=get_random_id())
             else:
                 api.messages.send(peer_id=peer_id, message="Ссылочки кончились", random_id=get_random_id())
 
-        if user_links == 1:
-            api.messages.send(peer_id=peer_id, message="аыф", random_id=get_random_id())
 
+        # Ссылки введены, просим улицы
+        if user_checks[0] == 1:
+            # Улица юзера
+            api.messages.send(peer_id=peer_id, message="Место проживания? (район или улица). Пример: 'ул. Уличная' или 'р-н Районский'", random_id=get_random_id())
+
+            if text.lower()[:3] == "ул." or text.lower()[:3] == "р-н":
+                users["street"].append(text.lower()[3:])
+
+        # Улицы введены, ожидаем интересные продукты
+        # Нужно добавить опцию без разницы, какоет ограничение по еде мб
+        if user_checks[1] == 1:
+            api.messages.send(peer_id=peer_id, message="Осталось ввести интересную для вас еду и мы готовы в работе!", random_id=get_random_id())
+
+        if user_checks[2] == 1:
+            api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
+
+        # Есть с чем работать - идем дальше
+        # Нужно сделать автоматическое уведомление о новых постах если юзер захочет
 
         if text.lower() == "дай еду":
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
