@@ -171,7 +171,7 @@ for event in longpoll.listen():
                         sql_update = """UPDATE pysqlite SET path = '/user/filter' WHERE peer_id = '{}'""".format(peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filter, message="Нажмите кнопку",
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filter, message="Главное меню",
                                           random_id=get_random_id())
 
                     elif text.lower() == "вкл/выкл уведомления":
@@ -196,10 +196,10 @@ for event in longpoll.listen():
                             peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_city, message="Нажмите кнопку",
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_city, message="Выбор города",
                                           random_id=get_random_id())
                     else:
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Нажмите кнопку",
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Главное меню",
                                           random_id=get_random_id())
 
                 # Если выбрана кнопка фильтра
@@ -210,7 +210,7 @@ for event in longpoll.listen():
                             peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Нажмите кнопку",
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Главное меню",
                                           random_id=get_random_id())
 
                     elif text.lower() == "указать район/улицу":
@@ -234,7 +234,7 @@ for event in longpoll.listen():
                         cursor.execute(sql_update)
                         conn.commit()
                     else:
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_city, message="Выберите город",
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_city, message="Выбор города",
                                           random_id=get_random_id())
 
                 break
@@ -248,6 +248,8 @@ for event in longpoll.listen():
                     "INSERT INTO pysqlite (peer_id, links, city, street, notification, path) VALUES ({},'links', '{}', 'streets', 'yes', '/user')".format(
                         peer_id, text.lower()))
                 conn.commit()
+                api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Главное меню",
+                                  random_id=get_random_id())
                 new_user = 0
                 # Вставляем в таблицу pysqlite нового пользователя
 
