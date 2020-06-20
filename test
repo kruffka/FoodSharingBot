@@ -161,16 +161,17 @@ for event in longpoll.listen():
 
         # Не уверен пока насколько эта переменная может повлиять при большом кол-ве юзеров (если вообще влияет), но вроде неплохо работает
         # вроде обновляется для каждого нового сообщения и одновременно с разных акков зашло легко, буду верить в волшебство
+        # идея бота странная..
         new_user = 1
 
         # Делаем выборку peer_id, path в таблице записей
-        cursor.execute('SELECT peer_id, path, notification FROM pysqlite')
+        cursor.execute('SELECT * FROM pysqlite')
         row = cursor.fetchone()
         while row is not None:
             if(row[0] == peer_id):
-                print(row[0]) # peer_id
-                print(row[1]) # path
-                print(row[2]) # notification (y/n)
+                # print(row[0]) # peer_id
+                # print(row[1]) # path
+                # print(row[2]) # notification (y/n); 3 - fav_foov..etc; all from users_database.sqlite
                 new_user = 0
 
 
@@ -179,6 +180,7 @@ for event in longpoll.listen():
                 # /user/filter - filter settings
                 # /user/city - city settings
                 # Идею с путями на хабре гдет подсмотрел, реализация наверное не совсем такая, мб можно все оптимизировать если было б время
+                # проверки на дураков? хочу спать(
                 if row[1] == '/user':
 
                     if text.lower() == "настроить фильтр":
@@ -223,24 +225,17 @@ for event in longpoll.listen():
                 # Выбор района/улицы в фильтре
                 if row[1] == '/user/filter/dist':
                     if text.lower() == 'прекратить ввод':
-                        sql_update = """UPDATE pysqlite SET path = '/user/filter' WHERE peer_id = '{}'""".format(
-                            peer_id)
+                        sql_update = """UPDATE pysqlite SET path = '/user/filter' WHERE peer_id = '{}'""".format(peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filter,
                                           message="Настройки фильтра",
                                           random_id=get_random_id())
                     elif text.lower() == 'показать текущий список':
-                        cursor.execute('SELECT peer_id, street FROM pysqlite')
-                        row_street = cursor.fetchone()
-                        while row_street is not None:
-                            if (row_street[0] == peer_id):
-                                api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
-                                                  message="Ваш текущий список районов/улиц для фильтра: {}".format(row_street[1]),
-                                                  random_id=get_random_id())
-                                break;
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                            message="Ваш текущий список районов/улиц для фильтра: {}".format(row[4]), random_id=get_random_id())
                     else:
-                        sql_update = """UPDATE pysqlite SET street = '{}' WHERE peer_id = '{}'""".format(text.lower(), peer_id)
+                        sql_update = """UPDATE pysqlite SET street = '{}' WHERE peer_id = '{}'""".format(row[4] + ", " + text.lower(), peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
@@ -259,21 +254,37 @@ for event in longpoll.listen():
                                           message="Настройки фильтра",
                                           random_id=get_random_id())
                     elif text.lower() == 'показать текущий список':
-                        cursor.execute('SELECT peer_id, fav_food FROM pysqlite')
-                        row_street = cursor.fetchone()
-                        while row_street is not None:
-                            if (row_street[0] == peer_id):
-                                api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
-                                                  message="Ваш текущий список еды для фильтра: {}".format(row_street[1]),
-                                                  random_id=get_random_id())
-                                break;
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                              message="Ваш текущий список еды для фильтра: {}".format(row[3]), random_id=get_random_id())
+                    else:
+                        sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(row[3] + ", " + text.lower(), peer_id)
+                        cursor.execute(sql_update)
+                        conn.commit()
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                                          message="{} добавлен(ы) в ваш список еды для фильтра".format(
+                                              re.split('[^a-zа-яё]+', text.lower(), flags=re.IGNORECASE)),
+                                          random_id=get_random_id())
+
+                # удаления фильтров по отдельности
+                if row[1] == '/user/filter/remove':
+                    if text.lower() == 'прекратить ввод':
+                        sql_update = """UPDATE pysqlite SET path = '/user/filter' WHERE peer_id = '{}'""".format(
+                            peer_id)
+                        cursor.execute(sql_update)
+                        conn.commit()
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filter,
+                                          message="Настройки фильтра",
+                                          random_id=get_random_id())
+                    elif text.lower() == 'показать текущий список':
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                            message="Ваш текущий список для фильтра: {}".format(row[3] + "; " + row[4]), random_id=get_random_id())
                     else:
                         sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(text.lower(),
                                                                                                          peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
-                                          message="{} добавлен(ы) в ваш список еды для фильтра".format(
+                                          message="{} удален(ы) из вашего списка еды для фильтра".format(
                                               re.split('[^a-zа-яё]+', text.lower(), flags=re.IGNORECASE)),
                                           random_id=get_random_id())
 
@@ -296,8 +307,14 @@ for event in longpoll.listen():
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch, message="Введите интересующие вас районы/улицы (Пример: 'Дзержинский, Кирова')",
                                           random_id=get_random_id())
 
-                    elif text.lower() == "удалить из выбранных":
-                        print('da')
+                    elif text.lower() == "удалить из выбранного":
+                        sql_update = """UPDATE pysqlite SET path = '/user/filter/remove' WHERE peer_id = '{}'""".format(
+                            peer_id)
+                        cursor.execute(sql_update)
+                        conn.commit()
+                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                                          message="Введите параметр, который хотели бы удалить",
+                                          random_id=get_random_id())
                     elif text.lower() == "указать еду":
                         sql_update = """UPDATE pysqlite SET path = '/user/filter/food' WHERE peer_id = '{}'""".format(
                             peer_id)
