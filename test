@@ -207,7 +207,7 @@ for event in longpoll.listen():
                     elif text.lower() == "сбросить все фильтры":
                          api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Фильтры были сброшены",
                                           random_id=get_random_id())
-                         sql_update = """UPDATE pysqlite SET path = '/user', links = 'links', fav_food = 'food', street = 'street' WHERE peer_id = '{}'""".format(peer_id)
+                         sql_update = """UPDATE pysqlite SET path = '/user', links = '', fav_food = '', street = '' WHERE peer_id = '{}'""".format(peer_id)
                          cursor.execute(sql_update)
                          conn.commit()
 
@@ -235,7 +235,7 @@ for event in longpoll.listen():
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
                             message="Ваш текущий список районов/улиц для фильтра: {}".format(row[4]), random_id=get_random_id())
                     else:
-                        sql_update = """UPDATE pysqlite SET street = '{}' WHERE peer_id = '{}'""".format(row[4] + ", " + text.lower(), peer_id)
+                        sql_update = """UPDATE pysqlite SET street = '{}' WHERE peer_id = '{}'""".format(row[4] + " " + text.lower(), peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
@@ -257,7 +257,7 @@ for event in longpoll.listen():
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
                               message="Ваш текущий список еды для фильтра: {}".format(row[3]), random_id=get_random_id())
                     else:
-                        sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(row[3] + ", " + text.lower(), peer_id)
+                        sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(row[3] + " " + text.lower(), peer_id)
                         cursor.execute(sql_update)
                         conn.commit()
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
@@ -277,17 +277,33 @@ for event in longpoll.listen():
                                           random_id=get_random_id())
                     elif text.lower() == 'показать текущий список':
                         api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
-                            message="Ваш текущий список для фильтра: {}".format(row[3] + "; " + row[4]), random_id=get_random_id())
+                            message="Ваш текущий список для фильтра: {}".format("Еда: " + row[3] + "; " + "Районы/улицы: " + row[4]), random_id=get_random_id())
                     else:
-                        sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(text.lower(),
-                                                                                                         peer_id)
-                        cursor.execute(sql_update)
-                        conn.commit()
-                        api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
-                                          message="{} удален(ы) из вашего списка еды для фильтра".format(
-                                              re.split('[^a-zа-яё]+', text.lower(), flags=re.IGNORECASE)),
-                                          random_id=get_random_id())
 
+                        # bruh
+                        # может по символам резать.. хз можно ли сломать бд если много данных туда засунуть юзером (через еду или улицы)
+                        if row[3].replace(text.lower(), ""):
+                            sql_update = """UPDATE pysqlite SET fav_food = '{}' WHERE peer_id = '{}'""".format(row[3].replace(text.lower(), ""), peer_id)
+
+                            cursor.execute(sql_update)
+                            conn.commit()
+                            api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                                              message="{} удален(ы) из вашего списка еды для фильтра".format(text.lower()),
+                                              random_id=get_random_id())
+                        # oof
+                        if row[4].replace(text.lower(), ""):
+                            sql_update = """UPDATE pysqlite SET street = '{}' WHERE peer_id = '{}'""".format(
+                                row[4].replace(text.lower(), ""), peer_id)
+
+                            cursor.execute(sql_update)
+                            conn.commit()
+                            api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                                              message="{} удален из вашего списка улиц/районов для фильтра".format(text.lower()),
+                                              random_id=get_random_id())
+                        else:
+                            api.messages.send(peer_id=peer_id, keyboard=keyboard_filt_ch,
+                                              message="{} не было в списках".format(text.lower()),
+                                              random_id=get_random_id())
                 # Если выбрана кнопка фильтра
                 if row[1] == '/user/filter':
 
@@ -355,7 +371,7 @@ for event in longpoll.listen():
             if text.lower() == "москва" or text.lower() == "новосибирск" or text.lower() == "санкт-петербург" or text.lower() == "другой":
                 api.messages.send(peer_id=peer_id, message="Ваш город {}!".format(text.lower()), random_id=get_random_id())
                 cursor.execute(
-                    "INSERT INTO pysqlite (peer_id, links, city, fav_food, street, notification, path) VALUES ({},'links', '{}', 'food', 'streets', 'yes', '/user')".format(
+                    "INSERT INTO pysqlite (peer_id, links, city, fav_food, street, notification, path) VALUES ({},'', '{}', '', '', 'yes', '/user')".format(
                         peer_id, text.lower()))
                 conn.commit()
                 api.messages.send(peer_id=peer_id, keyboard=keyboard_menu, message="Главное меню",
