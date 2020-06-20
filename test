@@ -22,32 +22,11 @@ domain = 'foodsharingbot'
 group_id = '-196442458'
 
 
-# Пользователи
-# нужно будет их записывать в файл и считывать в дальнейшем; json сейчас и потом
 users = []
-# Только при запуске в массив записываем из файла, при работе только в файл добавляем
-
-
-# Пока что только свой айди добавлю
-# users["peer_id"].append(103961888)
-# users["links"].append("https://vk.com/sharingfood")
-# users["links_count"].append(1)
-# users["street"].append("Улица")
-# users["fav_food"].append("Шоколад")
-# users["all_check"].append(0)
 
 # Указываем название файла базы данных
-# peer_id; links; street; notification
 conn = sqlite3.connect('users_database.sqlite')
 cursor = conn.cursor()
-
-def json_write():
-    with open('users_db.json', 'w') as f:
-        json.dump(users, f)
-
-def json_read():
-    with open('users_db.json', 'r') as f:
-        users = json.load(f.read())
 
 # Вайтлист фудшерингов для вк бы, но там чет очень много пабликов, мб потом; пока юзеры свои любые паблики могут кидать, не больше 5
 # fs_white_list = []
@@ -115,7 +94,32 @@ keyboard_filter = str(keyboard_filter.decode('utf-8'))
 keyboard_filt_ch = json.dumps(keyboard_filt_ch, ensure_ascii=False).encode('utf-8')
 keyboard_filt_ch = str(keyboard_filt_ch.decode('utf-8'))
 
+
+
+
+
 for event in longpoll.listen():
+    # Новый пост в паблике
+    # хз как с этим работать, но это наверное самый лучший был бы способ выявляения новых постов..
+    if event.type == VkBotEventType.WALL_POST_NEW:
+        cursor.execute('SELECT * FROM pysqlite')
+        row_1 = cursor.fetchone()
+        while row_1 is not None:
+            if(row_1[2] == 'yes'):
+                api.messages.send(peer_id=row_1[0], message="Новый пост в группе фудшеринга! https://vk.com/wall{}_{}".format(event.obj['from_id'], event.obj['id']),
+                                  random_id=get_random_id())
+            row_1 = cursor.fetchone()
+
+        # r = requests.get('https://api.vk.com/method/wall.get',
+        #                  params={
+        #                      'access_token': access_token,
+        #                      'domain': domain,
+        #                      'v': '5.110',
+        #                      'count': 10,
+        #                      'offset': 0
+        #                  })
+
+    # Новое сообщение юзера:
     if event.type == VkBotEventType.MESSAGE_NEW:
         message = event.obj['message']
 
@@ -350,7 +354,7 @@ for event in longpoll.listen():
                                   random_id=get_random_id())
 
 
-   
+
 
         if text.lower() == "дай еду":
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
