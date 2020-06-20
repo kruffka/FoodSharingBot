@@ -3,10 +3,9 @@ import requests
 import json
 import re
 import vk_api
+import sqlite3
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
-
-
 
 # token - для бота; access - для методов?
 token = "191e3dc35095061f02e911e3a58c36f6201bebd64d0c55ef483e188676f9d985d5520cb20051913367737"
@@ -26,6 +25,8 @@ group_id = '-196442458'
 # Пользователи
 # нужно будет их записывать в файл и считывать в дальнейшем; json сейчас и потом
 users = []
+# Только при запуске в массив записываем из файла, при работе только в файл добавляем
+
 
 # Пока что только свой айди добавлю
 # users["peer_id"].append(103961888)
@@ -35,53 +36,83 @@ users = []
 # users["fav_food"].append("Шоколад")
 # users["all_check"].append(0)
 
-# # Юзер
-# class user(object):
-#     def __init__(self, peer_id: str, links: str, street: str, fav_food: str, all_check: int):
-#         self.peer_id = peer_id
-#         self.links = links
-#         self.street = street
-#         self.fav_food = fav_food
-#         self.all_check = all_check
+# Указываем название файла базы данных
+# peer_id; links; street; notification
+conn = sqlite3.connect('users_database.sqlite')
+cursor = conn.cursor()
 
+def json_write():
+    with open('users_db.json', 'w') as f:
+        json.dump(users, f)
 
+def json_read():
+    with open('users_db.json', 'r') as f:
+        users = json.load(f.read())
 
 # Вайтлист фудшерингов для вк бы, но там чет очень много пабликов, мб потом; пока юзеры свои любые паблики могут кидать, не больше 5
 # fs_white_list = []
 
 # Функция проверки пользователей (были такие уже или нет)
-def user_check(peer_id):
-    check = 0
-    check_links = 0
-    check_street = 0
-    check_favfood = 0
+# def user_check(peer_id):
+#     check = 0
+#     check_links = 0
+#     check_street = 0
+#     check_favfood = 0
+#
+#     # если юзер существует, смотрим есть ли у него ссылки, улицы и любимая еда для дальнейшей работы
+#     for tmp in users:
+#         if tmp["peer_id"] == peer_id:
+#             check = 1
+#             if len(tmp["links"]) != 0:
+#                 check_links = 1
+#             if len(tmp["street"]) != 0:
+#                 check_street = 1
+#             if len(tmp["fav_food"]) != 0:
+#                 check_favfood = 1
+#
+#     # Если нету - добавляем
+#     if check == 0:
+#         jsonData = """ {
+#             "peer_id"    : """ + str(peer_id) + """,
+#             "links"      : [],
+#             "street"     : [],
+#             "fav_food"   : [],
+#             "all_checks" : 0
+#         } """
+#         data = json.loads(jsonData)
+#         users.append(data)
+#     return [check_links, check_street, check_favfood]
 
-    # если юзер существует, смотрим есть ли у него ссылки, улицы и любимая еда для дальнейшей работы
-    for tmp in users:
-        if tmp["peer_id"] == peer_id:
-            check = 1
-            if len(tmp["links"]) != 0:
-                check_links = 1
-            if len(tmp["street"]) != 0:
-                check_street = 1
-            if len(tmp["fav_food"]) != 0:
-                check_favfood = 1
+# При первом запуске читаем из файла в массив юзеров
+#json_read()
 
-    # Если нету - добавляем
-    if check == 0:
-        jsonData = """ {
-            "peer_id"    : """ + str(peer_id) + """,
-            "links"      : [],
-            "street"     : [],
-            "fav_food"   : [],
-            "all_checks" : 0
-        } """
-        data = json.loads(jsonData)
-        users.append(data)
-    return [check_links, check_street, check_favfood]
+# tut nado podumat tozh mb
+#user_checks = [0, 0, 0]
 
+# Функция кнопки
+def get_button(label, color, payload=''):
+    return {
+        "action": {
+            "type": "text",
+            "label": label,
+            "payload": json.dumps(payload)
+        },
+        "color": color
+    }
 
-user_checks = [0, 0, 0]
+keyboard = {
+    "one_time": True,
+    "buttons": [
+            [get_button(label="Москва", color="positive"),
+             get_button(label="Санкт-Петербург", color="positive")],
+            [get_button(label="Новосибирск", color="positive"),
+            get_button(label="Другой", color="primary")]
+
+        ]
+}
+# Перевести клавиатуру в строку (vk api так требует)
+keyboard = json.dumps(keyboard, ensure_ascii=False).encode('utf-8')
+keyboard = str(keyboard.decode('utf-8'))
 
 for event in longpoll.listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
@@ -90,91 +121,133 @@ for event in longpoll.listen():
         peer_id = message['peer_id']
         text = message['text']
 
-        # Работаем дальше, вводить ссылочки пока по одной можно за сообщение
-        if user_checks[0] == 0:
+        new_user = 1
 
-            # Добавляем ссылочки, удаление потом добавить над или изменение
-            if text.lower()[:4] == "http":
-                if (len(users[0]["links"]) <= 5):
-                    users[0]["links"].append(text.lower())
+        # Делаем выборку peer_id в таблице записей
+        cursor.execute('SELECT peer_id FROM pysqlite')
+        row = cursor.fetchone()
+        while row is not None:
+            if(row[0] == peer_id):
+                print(row[0])
+                new_user = 0
 
-                    api.messages.send(peer_id=peer_id, message="Ваша ссылка успешно добавлена!",
-                                      random_id=get_random_id())
-                    api.messages.send(peer_id=peer_id,
-                                      message="Место проживания? (район или улица). Пример: 'ул. Уличная' или 'р-н Районский'",
-                                      random_id=get_random_id())
-                else:
-                    api.messages.send(peer_id=peer_id, message="Ссылочки кончились", random_id=get_random_id())
-            else:
-                api.messages.send(peer_id=peer_id, message="Здравствуйте, пожалуйста, поделителитесь ссылками на ваши любимые фудшеринг группы, "
-                                                           "чтобы я мог работать. Максимум групп - 5. Пример: https://vk.com/sharingfood", random_id=get_random_id())
-
-
-        # Ссылки введены, просим улицы
-        if user_checks[0] == 1:
-            # Улица юзера
-
-            if text.lower()[:3] == "ул." or text.lower()[:3] == "р-н":
-                users[0]["street"].append(text.lower()[4:])
-                api.messages.send(peer_id=peer_id,
-                                  message="Осталось ввести интересную для вас еду и мы готовы в работе! Например: 'Яблоки, шоколад, печенье'",
+                break
+            row = cursor.fetchone()
+        print(text.lower())
+        if(new_user == 1):
+            if text.lower() != "москва" or text.lower() != "новосибирск" or text.lower() != "санкт-петербург":
+                # Вставляем в таблицу pysqlite нового пользователя
+                api.messages.send(peer_id=peer_id, keyboard=keyboard,
+                                  message="Здравствуй, я чат-бот для фудшеринга! Укажи свой город.",
                                   random_id=get_random_id())
-
-        # Улицы введены, ожидаем интересные продукты
-        # Нужно добавить опцию без разницы, какоет ограничение по еде мб
-        if user_checks[1] == 1 and users[0]["all_checks"] == 0:
-            users[0]["fav_food"] = re.split('[^a-zа-яё]+', text.lower(), flags=re.IGNORECASE)
-            api.messages.send(peer_id=peer_id,
-                              message="Вы ввели: {}".format(users[0]["fav_food"]),
-                              random_id=get_random_id())
-            api.messages.send(peer_id=peer_id,
-                              message="Мы готовы к работе! Введите интересующий вас продукт и/или улицу. Пример: 'Шоколад' или 'Шоколад ул. Улица'",
-                              random_id=get_random_id())
-            users[0]["all_checks"] = 1
-
-
-
-        # Есть с чем работать - идем дальше
-        # Нужно сделать автоматическое уведомление о новых постах если юзер захочет
-        if(user_checks[2] == 1):
-       # if (users[0]["all_checks"] == 1):
-            domain = ','.join(users[0]["links"])[15:]
-            print(domain)
-            r = requests.get('https://api.vk.com/method/wall.get',
-                              params={
-                                  'access_token': access_token,
-                                  'domain': domain,
-                                  'v': '5.110',
-                                  'count': 10,
-                                  'offset': 0
-                              })
-
-            data = r.json()['response']['items']
-            print(data)
-            found = 0
-            for post in data:
-                if re.search(text.lower(), post['text'].lower()):
-                    curId = post['owner_id']
-                    postId = post['id']
-                    post_url = 'https://vk.com/wall'+str(curId)+'_'+str(postId)
-                    print(post_url)
-                    found = found + 1
-
-            if found == 0:
-                api.messages.send(peer_id=peer_id, message="Ничего не нашли :(", random_id=get_random_id())
+            elif text.lower() == "другой":
+                api.messages.send(peer_id=peer_id, keyboard=keyboard,
+                                  message="Напишите ваш город",
+                                  random_id=get_random_id())
             else:
-                api.messages.send(peer_id=peer_id, message="Нашли {} результатов! {}".format(found, post_url), random_id=get_random_id())
+
+                api.messages.send(peer_id=peer_id, keyboard=keyboard,
+                                  message="Идем дальше!",
+                                  random_id=get_random_id())
+                new_user = 0
+                cursor.execute(
+                    "INSERT INTO pysqlite (peer_id, links, city, street, notification) VALUES ({},'links', 'fsa', 'streets', 'yes')".format(
+                        peer_id))
+                conn.commit()
+
+
+       #
+       #  # Работаем дальше, вводить ссылочки пока по одной можно за сообщение
+       #  if user_checks[0] == 0:
+       #
+       #      # Добавляем ссылочки, удаление потом добавить над или изменение
+       #      if text.lower()[:4] == "http":
+       #          if (len(users[0]["links"]) <= 5):
+       #              users[0]["links"].append(text.lower())
+       #
+       #              api.messages.send(peer_id=peer_id, message="Ваша ссылка успешно добавлена!",
+       #                                random_id=get_random_id())
+       #              api.messages.send(peer_id=peer_id,
+       #                                message="Место проживания? (район или улица). Пример: 'ул. Уличная' или 'р-н Районский'",
+       #                                random_id=get_random_id())
+       #          else:
+       #              api.messages.send(peer_id=peer_id, message="Ссылочки кончились", random_id=get_random_id())
+       #      else:
+       #          api.messages.send(peer_id=peer_id, message="Здравствуйте, пожалуйста, поделителитесь ссылками на ваши любимые фудшеринг группы, "
+       #                                                     "чтобы я мог работать. Максимум групп - 5. Пример: https://vk.com/sharingfood", random_id=get_random_id())
+       #
+       #
+       #  # Ссылки введены, просим улицы
+       #  if user_checks[0] == 1:
+       #      # Улица юзера
+       #
+       #      if text.lower()[:3] == "ул." or text.lower()[:3] == "р-н":
+       #          users[0]["street"].append(text.lower()[4:])
+       #          api.messages.send(peer_id=peer_id,
+       #                            message="Осталось ввести интересную для вас еду и мы готовы в работе! Например: 'Яблоки, шоколад, печенье'",
+       #                            random_id=get_random_id())
+       #
+       #  # Улицы введены, ожидаем интересные продукты
+       #  # Нужно добавить опцию без разницы, какоет ограничение по еде мб
+       #  if user_checks[1] == 1 and users[0]["all_checks"] == 0:
+       #      users[0]["fav_food"] = re.split('[^a-zа-яё]+', text.lower(), flags=re.IGNORECASE)
+       #      api.messages.send(peer_id=peer_id,
+       #                        message="Вы ввели: {}".format(users[0]["fav_food"]),
+       #                        random_id=get_random_id())
+       #      api.messages.send(peer_id=peer_id,
+       #                        message="Мы готовы к работе! Введите интересующий вас продукт и/или улицу. Пример: 'Шоколад' или 'Шоколад ул. Улица'",
+       #                        random_id=get_random_id())
+       #      users[0]["all_checks"] = 1
+       #
+       #      # Добавим в файл нового пользователя
+       #      json_write()
+       #
+       #
+       #
+       #  # Есть с чем работать - идем дальше
+       #  # Нужно сделать автоматическое уведомление о новых постах если юзер захочет
+       #  if(user_checks[2] == 5555): # == 1
+       # # if (users[0]["all_checks"] == 1):
+       #      domain = ','.join(users[0]["links"])[15:]
+       #      r = requests.get('https://api.vk.com/method/wall.get',
+       #                        params={
+       #                            'access_token': access_token,
+       #                            'domain': domain,
+       #                            'v': '5.110',
+       #                            'count': 10,
+       #                            'offset': 0
+       #                        })
+       #
+       #      data = r.json()['response']['items']
+       #      print(data)
+       #      found = 0
+       #      for post in data:
+       #          if re.search(text.lower(), post['text'].lower()):
+       #              curId = post['owner_id']
+       #              postId = post['id']
+       #              post_url = 'https://vk.com/wall'+str(curId)+'_'+str(postId)
+       #              print(post_url)
+       #              found = found + 1
+       #
+       #      if found == 0:
+       #          api.messages.send(peer_id=peer_id, message="Ничего не нашли :(", random_id=get_random_id())
+       #      else:
+       #          api.messages.send(peer_id=peer_id, message="Нашли {} результатов! {}".format(found, post_url), random_id=get_random_id())
 
         if text.lower() == "дай еду":
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
 
         # Смотрим есть ли айди чата с юзером в нашей коллекции; мб каждый раз при новом сообщение такое делать нехорошо..
         # 1 - Существует и у него есть ссылочки на группы; 0 - не очень аыфыаф тут еще наделал
-        user_checks = user_check(peer_id)
-        print(users, user_checks)
+#        user_checks = user_check(peer_id)
+ #       print(users, user_checks)
 
 
 
 
 
 
+
+# Закрываем соединение с базой данных
+cursor.close()
+conn.close()
