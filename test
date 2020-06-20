@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import requests
 import json
 import re
 import vk_api
@@ -7,9 +6,12 @@ import sqlite3
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.utils import get_random_id
 
-# token - для бота; access - для методов?
-token = "191e3dc35095061f02e911e3a58c36f6201bebd64d0c55ef483e188676f9d985d5520cb20051913367737"
-access_token = "fc0094f6fc0094f6fc0094f62ffc723bb0ffc00fc0094f6a2ec36ebf4e8f3016a58d7d9"
+
+# нужно в настройках api бота выставить разрешение на добавление записей стен (для wall_post_new) и входящие сообщения (messages_new)
+group_id = 'Ваш id группы'
+token = "Ваш токен"
+access_token = "access_token (https://vk.com/dev/access_token)"
+
 
 vk = vk_api.VkApi(token=token)
 
@@ -17,11 +19,7 @@ vk._auth_token()
 
 api = vk.get_api()
 
-longpoll = VkBotLongPoll(vk, 196442458)
-domain = 'foodsharingbot'
-group_id = '-196442458'
-
-
+longpoll = VkBotLongPoll(vk, group_id)
 users = []
 
 # Указываем название файла базы данных
@@ -94,13 +92,10 @@ keyboard_filter = str(keyboard_filter.decode('utf-8'))
 keyboard_filt_ch = json.dumps(keyboard_filt_ch, ensure_ascii=False).encode('utf-8')
 keyboard_filt_ch = str(keyboard_filt_ch.decode('utf-8'))
 
-
-
-
-
 for event in longpoll.listen():
     # Новый пост в паблике
-    # хз как с этим работать, но это наверное самый лучший был бы способ выявляения новых постов..
+    # хз как с этим работать, но это наверное самый быстрый был бы способ выявляения новых постов..
+    # p.s. в своем паблике все отлично работает
     if event.type == VkBotEventType.WALL_POST_NEW:
         cursor.execute('SELECT * FROM pysqlite')
         row_1 = cursor.fetchone()
