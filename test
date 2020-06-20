@@ -135,25 +135,24 @@ for event in longpoll.listen():
             row = cursor.fetchone()
         print(text.lower())
         if(new_user == 1):
-            if text.lower() != "москва" or text.lower() != "новосибирск" or text.lower() != "санкт-петербург":
+            if text.lower() == "москва" or text.lower() == "новосибирск" or text.lower() == "санкт-петербург":
+                api.messages.send(peer_id=peer_id, message="Идем дальше!", random_id=get_random_id())
+                cursor.execute(
+                    "INSERT INTO pysqlite (peer_id, links, city, street, notification) VALUES ({},'links', '{}', 'streets', 'yes')".format(
+                        peer_id, text.lower()))
+                conn.commit()
+                new_user = 0
                 # Вставляем в таблицу pysqlite нового пользователя
-                api.messages.send(peer_id=peer_id, keyboard=keyboard,
-                                  message="Здравствуй, я чат-бот для фудшеринга! Укажи свой город.",
-                                  random_id=get_random_id())
+
             elif text.lower() == "другой":
-                api.messages.send(peer_id=peer_id, keyboard=keyboard,
+                api.messages.send(peer_id=peer_id,
                                   message="Напишите ваш город",
                                   random_id=get_random_id())
             else:
 
                 api.messages.send(peer_id=peer_id, keyboard=keyboard,
-                                  message="Идем дальше!",
+                                  message="Здравствуй, я чат-бот для фудшеринга! Укажи свой город.",
                                   random_id=get_random_id())
-                new_user = 0
-                cursor.execute(
-                    "INSERT INTO pysqlite (peer_id, links, city, street, notification) VALUES ({},'links', 'fsa', 'streets', 'yes')".format(
-                        peer_id))
-                conn.commit()
 
 
        #
