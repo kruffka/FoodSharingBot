@@ -150,19 +150,20 @@ for event in longpoll.listen():
                               })
 
             data = r.json()['response']['items']
+            print(data)
             found = 0
             for post in data:
-                if re.search(text.lower(), post['text']):
-                    # curId = post['owner_id']
-                    # postId = post['id']
-                    # print('https://vk.com/wall'+str(curId)+'_'+str(postId))
-                    # found = found + 1
-                    print(post)
+                if re.search(text.lower(), post['text'].lower()):
+                    curId = post['owner_id']
+                    postId = post['id']
+                    post_url = 'https://vk.com/wall'+str(curId)+'_'+str(postId)
+                    print(post_url)
+                    found = found + 1
 
             if found == 0:
                 api.messages.send(peer_id=peer_id, message="Ничего не нашли :(", random_id=get_random_id())
             else:
-                api.messages.send(peer_id=peer_id, message="Нашли {} результатов".format(found), random_id=get_random_id())
+                api.messages.send(peer_id=peer_id, message="Нашли {} результатов! {}".format(found, post_url), random_id=get_random_id())
 
         if text.lower() == "дай еду":
             api.messages.send(peer_id=peer_id, message="Нету еды", random_id=get_random_id())
